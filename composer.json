@@ -1,0 +1,12 @@
+{
+    "name": "keboola/app-project-map",
+    "license": "MIT",
+    "type": "project",
+    "minimum-stability": "stable",
+    "require": {
+        "graphaware/neo4j-php-client": "4.0",
+        "keboola/storage-api-client": "^7.3",
+        "symfony/process": "^3.4",
+        "symfony/stopwatch": "^4.0"
+    }
+}

@@ -1,0 +1,99 @@
+jednosmerny graf
+
+CREATE (TaMysqlCars:Table {title: 'cars', id: 'in.c-ex-mysql.cars'})
+CREATE (TaMysqlPop:Table {title: 'population', id: 'in.c-ex-mysql.population'})
+CREATE (TaMysqlIris:Table {title: 'iris', id: 'in.c-ex-mysql.iris'})
+CREATE (TaMysqlVisits:Table {title: 'visits', id: 'in.c-ga.visits'})
+CREATE (TaImporter1:Table {title: 'ratios', id: 'in.c-importer.ratios'})
+CREATE (TaSomeTable:Table {title: 'some-wtf', id: 'in.c-wtf.table'})
+CREATE (TaProcessed:Table {title: 'processed', id: 'out.c-main.processed'})
+CREATE (TaOutTable1:Table {title: 'out-table-1', id: 'out.c-main.table1'})
+CREATE (TaOutTable2:Table {title: 'out-table-2', id: 'out.c-main.table2'})
+CREATE (TaOutTable3:Table {title: 'out-table-3', id: 'out.c-main.table3'})
+
+CREATE (ExMysql:Source {title: 'Tutorial Database', id: 'ex-mysql-12345', type: 'ex'})
+CREATE (ExGa:Source {title: 'Tutorial Google Analytics', id: 'ex-ga-12345', type: 'ex'})
+CREATE (Importer:Source {title: 'Importer configuration', id: 'importer-1234', type: 'ex'})
+CREATE (Tr1:Configuration {title: 'First Transformation', id: 'tr-first'})
+CREATE (Tr2:Configuration {title: 'Second Transformation', id: 'tr-second'})
+CREATE (WrTableau:Target {title: 'Tableau', id: 'wr-tableau-1'})
+CREATE (WrTableau2:Target {title: 'Talbeau 2', id: 'wr-tableau-2'})
+
+CREATE (ExMysql)-[:WRITES]->(TaMysqlCars)
+CREATE (ExMysql)-[:WRITES]->(TaMysqlPop)
+CREATE (ExMysql)-[:WRITES]->(TaMysqlIris)
+CREATE (ExGa)-[:WRITES]->(TaMysqlVisits)
+CREATE (Importer)-[:WRITES]->(TaImporter1)
+
+CREATE (Tr1)-[:WRITES]->(TaOutTable3)
+CREATE (Tr1)-[:WRITES]->(TaOutTable1)
+CREATE (Tr2)-[:WRITES]->(TaProcessed)
+CREATE (Tr2)-[:WRITES]->(TaOutTable2)
+
+CREATE (TaMysqlCars)-[:READBY]->(Tr1)
+CREATE (TaMysqlPop)-[:READBY]->(Tr1)
+CREATE (TaMysqlVisits)-[:READBY]->(Tr1)
+CREATE (TaImporter1)-[:READBY]->(Tr2)
+CREATE (TaOutTable1)-[:READBY]->(Tr2)
+CREATE (TaOutTable1)-[:READBY]->(WrTableau)
+CREATE (TaOutTable2)-[:READBY]->(WrTableau)
+CREATE (TaOutTable3)-[:READBY]->(WrTableau2)
+
+vypsat vse
+MATCH (n) RETURN n;
+
+jen veci, ktere jsou mezi source a destination (vyhodi TaMysqlIris, ale nevyhodi TaProcessed)
+MATCH (Source)-[]-(Destination) RETURN Source,Destination;
+
+jen veci, ktere jsou mezi source a destination (vyhodi TaMysqlIris i TaProcessed)
+MATCH (Source:Source)-[*]-(Middle)-[*]-(Destination:Target) RETURN Source,Middle,Destination;
+
+MATCH (Source:Source)-[*]-(Middle)-[*]->(Destination:Target) WHERE Destination.id = 'wr-tableau-1' RETURN Source,Middle,Destination;
+
+MATCH (Source:Source)-[*]-(Middle)-[*]->(Destination:Target) WHERE Destination.id = 'wr-tableau-2' RETURN Source,Middle,Destination;
+
+MATCH n = ((:Source)-[*]-()-[*]-(:Target)) WITH n MATCH (nn) WHERE NOT (nn IN nodes(n)) RETURN nn;
+-> nefunguje
+
+MATCH path = ((:Source)-[*]-()-[*]-(:Target)) RETURN extract(node in nodes(path) | node.id);
+
+efektivnejsi reseni
+MATCH p = (Source:Source)-[*]->(Destination:Target) WHERE Destination.id = 'wr-tableau-2' RETURN Source,Destination, nodes(p);
+
+MATCH p = (Source:Source)-[*]->(Destination:Target) WHERE Destination.id = 'wr-tableau-2' RETURN Source,Destination, nodes(p) AS nnodes WITH nodes MATCH (n) WHERE NOT (n in nnodes) RETURN n;
+
+MATCH p = (Source:Source)-[*]->(Destination {id: 'wr-tableau-2'}) UNWIND nodes(p) as nds RETURN nds;
+
+MATCH p = (Source:Source)-[*]->(Destination {id: 'wr-tableau-2'}) UNWIND nodes(p) as nds MATCH (n) WHERE NOT (n IN nds) RETURN n;
+
+
+MATCH p = (Source:Source)-[*]->(Destination {id: 'wr-tableau-2'}) UNWIND nodes(p) as nds WITH collect(nds) AS nodelist MATCH (n) WHERE NOT (n IN nodelist) RETURN n;
+
+heureka!
+MATCH p = (Source:Source)-[*]->(Destination:Target) UNWIND nodes(p) as nds WITH collect(nds) AS nodelist MATCH (n) WHERE NOT (n IN nodelist) RETURN n;
+
+
+
+MATCH (n:Source) WITH collect(n) as nodes
+UNWIND nodes as n
+UNWIND nodes as m
+WITH * WHERE id(n) < id(m)
+MATCH path = allShortestPaths( (n)-[*..4]-(m) )
+RETURN path
+
+MATCH (Source)-[]-(Destination)
+
+RETURN Source,Destination;
+
+
+https://neo4j.com/developer/kb/all-shortest-paths-between-set-of-nodes/
+http://neo4j.com/docs/developer-manual/current/cypher/introduction/uniqueness/
+http://neo4j.com/docs/developer-manual/current/cypher/syntax/patterns/#cypher-pattern-node
+https://neo4j.com/developer/cypher-query-language/
+https://stackoverflow.com/questions/29711757/best-way-to-delete-all-nodes-and-relationships-in-cypher
+https://stackoverflow.com/questions/32156721/cypher-with-is-required-between-create-and-match
+https://stackoverflow.com/questions/12903873/neo4j-get-all-nodes-in-a-graph-even-those-that-are-unconnected-by-relationship
+https://neo4j.com/developer/guide-data-visualization/#_howto_graph_visualization_step_by_step
+https://stackoverflow.com/questions/21765875/cypher-subquery-on-each-node-in-path
+
+

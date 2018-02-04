@@ -1,0 +1,16 @@
+version: '2'
+
+services:
+  app-project-map:
+    build: .
+    image: keboola/app-project-map
+    volumes:
+      - .:/code
+      - ./data:/data
+    ports:
+      - "17687:7687" # bolt
+      - "17474:7474" # http
+    environment:
+      - "NEO4J_AUTH=none"
+    tty: true
+    stdin_open: true
